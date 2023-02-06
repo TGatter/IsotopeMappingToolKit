@@ -89,6 +89,7 @@ for xml_species in reaction_parser.find_all('species'):
    xm_id = xml_species.get("id")
    identifiers = []
    identifiers.append("bigg.metabolite:"+xml_species.get("id")[2:-2])
+   potential_meta_ids = set()
    
    for annotation in xml_species.find_all('rdf:li'):
        resource = annotation.get('rdf:resource')
@@ -97,7 +98,7 @@ for xml_species in reaction_parser.find_all('species'):
           db, ident = resource_split
           
           if db == "metanetx.chemical":
-              identifiers.append(ident)
+              potential_meta_ids.add(ident)
           elif db == "inchikey":
               identifiers.append(ident)
           elif db == "kegg.compound":
@@ -117,7 +118,6 @@ for xml_species in reaction_parser.find_all('species'):
           elif ident.startswith("biocyc:META"):
               identifiers.append("metacyc.compound:"+ident.split(":")[2])
 
-   potential_meta_ids = set()
    for ident in identifiers:
       if ident in compref:
           potential_meta_ids.add(compref[ident])
@@ -134,8 +134,6 @@ for xml_species in reaction_parser.find_all('species'):
             changed = True
       if not changed:
          break
-
-
    xmlcompound_to_potential_metanetxids[xm_id] = {}
    for pmid in potential_meta_ids:
       xmlcompound_to_potential_metanetxids[xm_id][pmid] = 0
@@ -179,6 +177,8 @@ for xml_react in reaction_parser.find_all('reaction'):
 
 xmlcompound_to_metanetxid = {}
 for c in xmlcompound_to_potential_metanetxids:
+   nonzero = len([x for x in xmlcompound_to_potential_metanetxids[c] if xmlcompound_to_potential_metanetxids[c][x] > 0])
+   print("Nonzero", nonzero)
    best_meta_id = max(xmlcompound_to_potential_metanetxids[c], key= lambda x: xmlcompound_to_potential_metanetxids[c][x])
    xmlcompound_to_metanetxid[c] = best_meta_id
 
