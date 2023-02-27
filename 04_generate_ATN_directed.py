@@ -102,10 +102,16 @@ def addAutomorphisms(mol, limit_to_orbits=True):
                     mol.add_edge(i, isomorphism[i])
                     mol.edges[i, isomorphism[i]]['transition'] = TransitionType.SYMMETRY
         
-def parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_atoms, mapped_hydrogens = {}, explicit_hydrogens=False):
+def parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_atoms, side, mapped_hydrogens = {}, explicit_hydrogens=False):
 
     logging.debug("Parse " + name + " : " + smiles)
-
+    
+    # rename molecules of highly conzentrations
+    if side == 'left' and name in highmol_list:
+        name = name + '_in'
+    if side == 'right' and name in highmol_list:
+        name = name + '_out'
+            
     mol = read_smiles(smiles) # read smile
     hydromol = read_smiles(hydro)
     
@@ -165,7 +171,7 @@ def parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound
                 mol.edges[e]['transition'] = TransitionType.NO_TRANSITION
 
         ATN.add_nodes_from(mol.nodes(data=True))
-        ATN.add_edges_from(mol.edges(data=True))
+        ATN.add_edges_from(mol.edges(data=True),arrows="no")
         print('EDGES MOL')
         print(mol.edges(data=True))
         for mol_node, data in mol.nodes(data=True):
@@ -179,6 +185,11 @@ def parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound
             findHydrogenGroups(mol, mapped_hydrogens, mapped_atoms)
         
 # ======== MAIN
+
+# reading in the list of highly concentrated molecules 
+with open ( 'custom_pysmiles/list_highlyConcMol.txt' , 'r') as highmol_file:
+       highmol = highmol_file.readlines() 
+highmol_list = [s.strip() for s in highmol]
 
 # first an intermediary with bonding and transition edges that is trimmed afterwards
 ATN=nx.DiGraph()
@@ -233,13 +244,13 @@ with open( mappedsmiles , 'r') as smiles_file:
     mapped_educt_atoms = {}
     mapped_educt_hydrogens = {}
     for name, smiles, hydro in zip(names_left, smiles_left, hydrogen_left):
-        parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_educt_atoms, mapped_educt_hydrogens, map_hydrogens)
+        parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_educt_atoms, 'left', mapped_educt_hydrogens, map_hydrogens)
 
     logging.debug("Parse Products")
     mapped_product_atoms = {}
     mapped_product_hydrogens = {}
     for name, smiles, hydro in zip(names_right, smiles_right, hydrogen_right):
-        parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_product_atoms, mapped_product_hydrogens, map_hydrogens)
+        parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound, ATN, mapped_product_atoms,  'right',mapped_product_hydrogens, map_hydrogens)
 
     if map_hydrogens:
 
@@ -339,7 +350,9 @@ with open(outputgml+".ckey", 'w') as og:
 
 draw = nx.DiGraph()
 draw.add_nodes_from(ATN.nodes())
-draw.add_edges_from(ATN.edges())
+draw.add_edges_from(ATN.edges(data=True))
+print(ATN.edges(data=True))
+print(draw.edges(data=True))
 
 for n in ATN.nodes():
     draw.nodes[n]['label'] = ATN.nodes[n]['element']
