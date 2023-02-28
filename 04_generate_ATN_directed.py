@@ -24,6 +24,12 @@ outputgml = sys.argv[2]
 map_hydrogens = False
 if len(sys.argv) == 4:
     map_hydrogens = str(sys.argv[3])
+    
+# generate Folder with all molecules as single graphs
+path = os.getcwd()
+newpath = 'Molecule_Graphs' 
+if not os.path.exists(newpath):
+    os.makedirs(newpath)
 
 ## ========== DEF BLOCK
 
@@ -183,11 +189,35 @@ def parseXDuct(name, smiles, hydro, compound_to_subgraph, compoundId_to_compound
         if explicit_hydrogens:
             logging.debug("Find Hydrogen Partners")
             findHydrogenGroups(mol, mapped_hydrogens, mapped_atoms)
+            
+        # save single molecule graph 
+        print(mol.nodes())
+        newMol = mol.copy()
+        print(newMol.nodes(data=True))
+        for n in mol.nodes():
+            newMol.nodes[n]['label'] = mol.nodes[n]['element'] + '(' + n + ')'
+            if mol.nodes[n]['element'] == 'C':
+                newMol.nodes[n]['color'] = "black"
+            if mol.nodes[n]['element'] == 'O':
+                newMol.nodes[n]['color'] = "red"    
+            if mol.nodes[n]['element'] == 'C':
+                newMol.nodes[n]['color'] = "black"
+            if mol.nodes[n]['element'] == 'S':
+                newMol.nodes[n]['color'] = "yellow"
+        for e in mol.edges():
+            newMol.edges[e]['label'] = str(mol.edges[e]['order'])
+            newMol.edges[e]['color'] = "black"
+
+        net = Network('1000px', '1000px')
+        net.from_nx(newMol)
+        with open(newpath + '/' + name + '.html', "w+") as out:
+            out.write(net.generate_html())
+
         
 # ======== MAIN
 
 # reading in the list of highly concentrated molecules 
-with open ( 'custom_pysmiles/list_highlyConcMol.txt' , 'r') as highmol_file:
+with open ( 'metanetx/list_highlyConcMol.txt' , 'r') as highmol_file:
        highmol = highmol_file.readlines() 
 highmol_list = [s.strip() for s in highmol]
 
@@ -215,7 +245,6 @@ with open( mappedsmiles , 'r') as smiles_file:
     smiles_str = mapped_smiles_line.strip().replace("@", '').replace("/", '')
     hydrogen_str = hydrogen_smiles_line.strip()
     names_str = name_line.strip()
-    print(names_str)
     reverse_line = reverse_line.strip().replace("reversibile: ", '')
     #filename = ''.join(letter for letter in name_line if letter.isalnum())
 
@@ -327,24 +356,30 @@ with open( mappedsmiles , 'r') as smiles_file:
                 ATN.edges[n1, n2]['reaction_id'] += str(len(reactions)-1)
                 ATN.edges[n2, n1]['reaction_id'] += str(len(reactions)-1)
         else:
-            if reverse_line == 'false':
+            if reverse_line == 'true': #reverse RXNs
+                if ATN.nodes[n2]['compound_name'].endswith('_in') or ATN.nodes[n2]['compound_name'].endswith('_out') or ATN.nodes[n1]['compound_name'].endswith('_in') or ATN.nodes[n1]['compound_name'].endswith('_out'):
+                    ATN.add_edge(n1, n2)
+                    ATN.edges[n1, n2]['transition'] = TransitionType.REACTION
+                    ATN.edges[n1, n2]['reaction_id'] = str(len(reactions)-1)                
+                else: 
+                    ATN.add_edge(n1, n2)
+                    ATN.edges[n1, n2]['transition'] = TransitionType.REACTION
+                    ATN.edges[n1, n2]['reaction_id'] = str(len(reactions)-1) 
+                    
+                    ATN.add_edge(n2, n1)
+                    ATN.edges[n2, n1]['transition'] = TransitionType.REACTION
+                    ATN.edges[n2, n1]['reaction_id'] = str(len(reactions)-1) 
+            else: # non reverse RXNs
                 ATN.add_edge(n1, n2)
                 ATN.edges[n1, n2]['transition'] = TransitionType.REACTION
                 ATN.edges[n1, n2]['reaction_id'] = str(len(reactions)-1)
-            else:
-                ATN.add_edge(n1, n2)
-                ATN.edges[n1, n2]['transition'] = TransitionType.REACTION
-                ATN.edges[n1, n2]['reaction_id'] = str(len(reactions)-1) 
-                
-                ATN.add_edge(n2, n1)
-                ATN.edges[n2, n1]['transition'] = TransitionType.REACTION
-                ATN.edges[n2, n1]['reaction_id'] = str(len(reactions)-1) 
-
 nx.write_gml(ATN, outputgml)
 
 with open(outputgml+".ckey", 'w') as og:
   for key in sorted(compoundId_to_compound):
       print(key, compoundId_to_compound[key][0], compoundId_to_compound[key][1] ,sep='\t', file=og)
+
+
 
 # DRAWING
 
