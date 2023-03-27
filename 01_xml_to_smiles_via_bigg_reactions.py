@@ -177,6 +177,8 @@ for xml_react in reaction_parser.find_all('reaction'):
 
 xmlcompound_to_metanetxid = {}
 for c in xmlcompound_to_potential_metanetxids:
+   nonzero = len([x for x in xmlcompound_to_potential_metanetxids[c] if xmlcompound_to_potential_metanetxids[c][x] > 0])
+   print("Nonzero", nonzero)
    best_meta_id = max(xmlcompound_to_potential_metanetxids[c], key= lambda x: xmlcompound_to_potential_metanetxids[c][x])
    xmlcompound_to_metanetxid[c] = best_meta_id
 
@@ -275,7 +277,7 @@ with open(outputsmiles, 'w') as omf:
 
    valid, name_formula, smiles_formula = parse_and_print_xml_reaction(educts, products)
    if valid:
-      ec_string = ""
+      ec_string = "-"
       if meta_reaction_id != "-":
          ec_string = ";".join(reactions[meta_reaction_id][1])
       print(file=omf)

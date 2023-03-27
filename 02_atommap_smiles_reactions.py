@@ -27,14 +27,8 @@ with open(reactions, mode='r') as rf:
           rxn_mapper = RXNMapper()
           results = rxn_mapper.get_attention_guided_atom_maps([smiles_reaction], canonicalize_rxns=False)   
 
-          smiles_sides = smiles_reaction.split('>>')
-
-          left_string = ".".join( [ Chem.MolToSmiles(Chem.MolFromSmiles(s), allHsExplicit=True, canonical=False) for s in smiles_sides[0].split('.')  ] )
-          right_string = ".".join( [ Chem.MolToSmiles(Chem.MolFromSmiles(s), allHsExplicit=True, canonical=False) for s in smiles_sides[1].split('.')  ] )    
-
+          print(id_line.strip(), file=omf)
           print(name_reaction, file=omf)
-          #print(smiles_reaction, file=omf)
-          print(left_string+">>"+right_string, file=omf)
           print(results[0]['mapped_rxn'], file=omf)
       except RuntimeError:
          print("skipped reaction of length", len(smiles_reaction), file=sys.stderr)
